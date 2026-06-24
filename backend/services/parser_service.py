@@ -15,74 +15,36 @@ IGNORED_DIRS = {
     ".vscode"
 }
 
+IGNORED_FILENAMES = {
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml"
+}
+
 IGNORED_EXTENSIONS = {
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".gif",
-    ".webp",
-    ".svg",
-
-    ".mp4",
-    ".avi",
-    ".mov",
-    ".mkv",
-
-    ".mp3",
-    ".wav",
-    ".flac",
-
-    ".zip",
-    ".tar",
-    ".gz",
-    ".rar",
-
-    ".exe",
-    ".dll",
-    ".so",
-    ".bin",
-
-    ".pdf",
-    ".pptx",
-    ".docx",
-
-    ".ttf",
-    ".woff",
-    ".woff2"
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+    ".mp4", ".avi", ".mov", ".mkv",
+    ".mp3", ".wav", ".flac",
+    ".zip", ".tar", ".gz", ".rar",
+    ".exe", ".dll", ".so", ".bin",
+    ".pdf", ".pptx", ".docx",
+    ".ttf", ".woff", ".woff2"
 }
 
 ALLOWED_EXTENSIONS = {
-    ".py",
-    ".js",
-    ".jsx",
-    ".ts",
-    ".tsx",
-    ".java",
-    ".go",
-    ".rs",
-    ".cpp",
-    ".c",
-    ".cs",
-    ".php",
-    ".rb",
-    ".swift",
-    ".kt",
-    ".scala",
+    ".py", ".js", ".jsx", ".ts", ".tsx",
+    ".java", ".go", ".rs", ".cpp", ".c",
+    ".cs", ".php", ".rb", ".swift",
+    ".kt", ".scala",
 
-    ".json",
-    ".yaml",
-    ".yml",
-    ".toml",
-    ".xml",
-    ".ini",
+    ".json", ".yaml", ".yml",
+    ".toml", ".xml", ".ini",
 
-    ".md",
-    ".txt",
+    ".md", ".txt",
 
     ".sql",
 
-    ".sh",
-    ".bat"
+    ".sh", ".bat"
 }
 
 IMPORTANT_FILENAMES = {
@@ -94,39 +56,39 @@ IMPORTANT_FILENAMES = {
     ".env.example",
     "requirements.txt",
     "package.json",
-    "package-lock.json",
-    "yarn.lock",
-    "pnpm-lock.yaml",
     "Cargo.toml",
     "go.mod",
     "pom.xml",
     "build.gradle"
 }
 
-def is_text_file(file_path):
-    
-    try:
-        with open(
-            file_path,
-            "r",
-            encoding="utf-8"
-        ) as f:
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
 
+def is_text_file(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
             f.read(1024)
 
         return True
 
-    except:
+    except (UnicodeDecodeError, OSError):
         return False
 
 
 def should_include_file(file_path):
-
     filename = os.path.basename(file_path)
-
     ext = os.path.splitext(file_path)[1].lower()
 
+    if filename in IGNORED_FILENAMES:
+        return False
+
     if ext in IGNORED_EXTENSIONS:
+        return False
+
+    try:
+        if os.path.getsize(file_path) > MAX_FILE_SIZE:
+            return False
+    except OSError:
         return False
 
     if filename in IMPORTANT_FILENAMES:
@@ -137,10 +99,12 @@ def should_include_file(file_path):
 
     return is_text_file(file_path)
 
-def get_repository_files(repo_path):
-    collected_files=[]
 
-    for root,dirs,files in os.walk(repo_path):
+def get_repository_files(repo_path):
+    collected_files = []
+
+    for root, dirs, files in os.walk(repo_path):
+
         dirs[:] = [
             d
             for d in dirs
@@ -148,22 +112,18 @@ def get_repository_files(repo_path):
         ]
 
         for file in files:
-            full_path = os.path.join(
-                root,
-                file
-            )
+            full_path = os.path.join(root, file)
+
             if should_include_file(full_path):
-                collected_files.append(
-                    full_path
-                )
+                collected_files.append(full_path)
+
     return collected_files
 
-def read_repository_files(repo_path):
-    file_paths = get_repository_files(
-        repo_path
-    )
 
-    documents=[]
+def read_repository_files(repo_path):
+    file_paths = get_repository_files(repo_path)
+
+    documents = []
 
     for path in file_paths:
         try:
@@ -171,14 +131,16 @@ def read_repository_files(repo_path):
                 path,
                 "r",
                 encoding="utf-8"
-            )as f:
+            ) as f:
+
                 content = f.read()
 
                 documents.append({
-                    "path":path,
-                    "content":content
+                    "path": os.path.relpath(path, repo_path),
+                    "content": content
                 })
-        except Exception:
+
+        except (UnicodeDecodeError, OSError):
             continue
 
     return documents
