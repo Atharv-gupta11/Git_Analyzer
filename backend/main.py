@@ -6,7 +6,9 @@ from services.chunking_service import chunk_documents
 from services.vector_store_service import  index_chunks
 from services.vector_store_service import  search_repository
 from services.llm_service import  ask_repository
-
+from services.summary_service import generate_summary
+from services.repository_service import process_repository_query
+from services.analysis_service import generate_analysis
 
 app = FastAPI()
 
@@ -105,13 +107,12 @@ def search_repo(
         query
     )
 
-    return results
-
-@app.get("/ask")
-def ask_repo(repo_name,query):
-    answer = ask_repository(
+@app.post("/analyze")
+def analyze_repository(
+    repo_name: str,
+    question: str
+):
+    return process_repository_query(
         repo_name,
-        query
+        question
     )
-
-    return answer

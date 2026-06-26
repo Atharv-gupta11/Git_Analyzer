@@ -70,7 +70,6 @@ def ask_repository(
         query):
     
     results=search_repository(repo_name,query)
-
     context=format_context(results)
 
     prompt = f"""
@@ -119,11 +118,6 @@ For API questions:
 - Response format.
 - Related files.
 
-Always end your answer with:
-
-Sources:
-- <file paths used>
-
 Question:
 {query}
 
@@ -153,6 +147,8 @@ Answer:
             })
 
             seen.add(path)
+
+    print(results["metadatas"][0])    
     return {
         "answer": response.content,
         "sources": sources
