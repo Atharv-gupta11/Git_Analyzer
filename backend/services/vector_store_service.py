@@ -18,6 +18,7 @@ def get_collection(repo_name):
         f"repo_{repo_name}"
         .lower()
         .replace("-", "_")
+        .strip("_-.")
     )
     return client.get_or_create_collection(
         name=collection_name

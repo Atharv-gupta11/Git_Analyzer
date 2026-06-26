@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+
 from services.git_service import clone_repoository
 from services.parser_service import get_repository_files
 from services.parser_service import read_repository_files
@@ -9,24 +10,38 @@ from services.llm_service import  ask_repository
 from services.summary_service import generate_summary
 from services.repository_service import process_repository_query
 from services.analysis_service import generate_analysis
+from pydantic import BaseModel
+
 
 app = FastAPI()
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
 
 @app.get("/")
 def home():
     return {"message": "GitHub Project Analyzer"}
 
 
-@app.post("/clone")
+@app.post("/repositories")
 def clone_repo(repo_url:str):
 
     result=clone_repoository(repo_url)
+    if result.get("success") is False:
+        return {"success": False, "error": result.get("error")}
     return {
         "success":True,
         "data":result
     }
 
-@app.get("/files")
+@app.get("/repos/{repo_name}/files")
 def get_files(repo_name:str):
     repo_path = f"./repos/{repo_name}"
 
@@ -37,7 +52,7 @@ def get_files(repo_name:str):
         "files":files
     }
 
-@app.get("/repository-stats")
+@app.get("/repos/{repo_name}/stats")
 def get_file_content(repo_name:str):
     repo_path = f"./repos/{repo_name}"
 
@@ -52,7 +67,7 @@ def get_file_content(repo_name:str):
     }
 
 
-@app.get("/repos/{repo_name}/chunks")
+@app.get("/repos/{repo_name}/sample-chunks")
 def generate_chunks(repo_name:str):
     repo_path = f"./repos/{repo_name}"
 
@@ -106,13 +121,25 @@ def search_repo(
         repo_name,
         query
     )
+    return results
 
-@app.post("/analyze")
+class AnalyzeRequest(BaseModel):
+    question: str
+
+class AnalyzeResponse(BaseModel):
+    intent: str
+    answer: str
+    sources: list
+    
+@app.post(
+    "/repos/{repo_name}/analyze",
+    response_model=AnalyzeResponse
+)
 def analyze_repository(
     repo_name: str,
-    question: str
+    request: AnalyzeRequest
 ):
     return process_repository_query(
-        repo_name,
-        question
-    )
+    repo_name,
+    request.question
+)

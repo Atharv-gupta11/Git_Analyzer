@@ -1,0 +1,115 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme - Dark mode only
+   * Colors converted to HSL format for tailwind compatibility
+   */
+  :root {
+    /* Main dark theme */
+    --background: 217.2 32.6% 6.5%;
+    --foreground: 210 40% 98%;
+
+    --card: 220.3 31.2% 10.8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220.3 31.2% 10.8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 100% 52%;
+    --primary-foreground: 217.2 32.6% 6.5%;
+
+    --secondary: 220.3 31.2% 10.8%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 27.3% 36.7%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 217.2 100% 52%;
+    --accent-foreground: 217.2 32.6% 6.5%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220.3 27% 18%;
+    --input: 220.3 27% 18%;
+    --ring: 217.2 100% 52%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 217.2 27.3% 9.4%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217.2 100% 52%;
+    --sidebar-primary-foreground: 217.2 32.6% 6.5%;
+    --sidebar-accent: 217.2 27.3% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220.3 27% 18%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Status colors */
+    --success: 142.3 76.2% 36.3%;
+    --warning: 38.6 92.1% 50.2%;
+    --error: 0 84.2% 60.2%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", sans-serif;
+    color-scheme: dark;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+}
+
+@layer components {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full hover:bg-muted transition-colors;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted;
+  }
+
+  /* Glass effect for cards */
+  .card-subtle {
+    @apply bg-card/50 backdrop-blur-sm border border-border/50;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-200 ease-out;
+  }
+}

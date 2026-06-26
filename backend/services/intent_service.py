@@ -96,5 +96,9 @@ Question:
 
     response = llm.invoke(prompt)
 
-    return response.content.strip().upper()
+    intent = response.content.strip().upper()
+    valid_intents = {"QA", "SUMMARY", "ARCHITECTURE", "BUG_ANALYSIS", "IMPROVEMENTS", "DOCUMENTATION"}
+    if intent not in valid_intents:
+        return "QA"
+    return intent
 
