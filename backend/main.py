@@ -22,7 +22,6 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True,
 )
 
 @app.get("/")
@@ -139,6 +138,7 @@ def analyze_repository(
     repo_name: str,
     request: AnalyzeRequest
 ):
+    print("analyzing")
     return process_repository_query(
     repo_name,
     request.question

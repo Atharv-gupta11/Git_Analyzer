@@ -8,8 +8,9 @@ export function createServer() {
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // Removed express.json() and urlencoded() because they drain the request body
+  // stream before Vite's proxy can forward it to the FastAPI backend, causing
+  // POST requests with a JSON body to hang indefinitely.
 
   // Example API routes
   app.get("/api/ping", (_req, res) => {

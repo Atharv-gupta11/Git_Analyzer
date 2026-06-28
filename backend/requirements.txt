@@ -6,3 +6,4 @@ langchain_text_splitters
 chromadb
 sentence-transformers
 langchain-groq
+tqdm

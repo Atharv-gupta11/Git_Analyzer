@@ -11,45 +11,45 @@
    * Colors converted to HSL format for tailwind compatibility
    */
   :root {
-    /* Main dark theme */
-    --background: 217.2 32.6% 6.5%;
-    --foreground: 210 40% 98%;
+    /* Mid-light slate/gray theme (Not exactly white, but a soft mid-light) */
+    --background: 220 14% 93%;
+    --foreground: 220 30% 20%;
 
-    --card: 220.3 31.2% 10.8%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 14% 97%;
+    --card-foreground: 220 30% 20%;
 
-    --popover: 220.3 31.2% 10.8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 14% 97%;
+    --popover-foreground: 220 30% 20%;
 
-    --primary: 217.2 100% 52%;
-    --primary-foreground: 217.2 32.6% 6.5%;
+    --primary: 221 83% 53%; /* Vibrant primary blue */
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 220.3 31.2% 10.8%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14% 88%;
+    --secondary-foreground: 220 30% 20%;
 
-    --muted: 217.2 27.3% 36.7%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 85%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 217.2 100% 52%;
-    --accent-foreground: 217.2 32.6% 6.5%;
+    --accent: 220 20% 88%;
+    --accent-foreground: 221 83% 53%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220.3 27% 18%;
-    --input: 220.3 27% 18%;
-    --ring: 217.2 100% 52%;
+    --border: 220 14% 82%;
+    --input: 220 14% 82%;
+    --ring: 221 83% 53%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 217.2 27.3% 9.4%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217.2 100% 52%;
-    --sidebar-primary-foreground: 217.2 32.6% 6.5%;
-    --sidebar-accent: 217.2 27.3% 20%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 220.3 27% 18%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 220 14% 90%;
+    --sidebar-foreground: 220 30% 20%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 220 14% 85%;
+    --sidebar-accent-foreground: 220 30% 20%;
+    --sidebar-border: 220 14% 80%;
+    --sidebar-ring: 221 83% 53%;
 
     /* Status colors */
     --success: 142.3 76.2% 36.3%;
@@ -66,7 +66,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", sans-serif;
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
@@ -78,6 +78,14 @@
   code {
     overflow-x: auto;
     white-space: pre;
+  }
+  
+  /* Ensure typography headings in the chat panel are always readable */
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    @apply text-foreground font-semibold;
+  }
+  .prose strong {
+    @apply text-foreground font-semibold;
   }
 }
 

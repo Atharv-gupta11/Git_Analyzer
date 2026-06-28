@@ -1,24 +1,25 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Paperclip, Trash2, Bot, FolderOpen } from "lucide-react";
+import { Send, Paperclip, Trash2, Bot, FolderOpen, User, FileCode, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRepo } from "../context/RepoContext";
 import { api } from "../api/api";
 
-export function AIChatPanel({ onToggleRepositoryPanel }) {
+export function AIChatPanel({ onClose }) {
   const { currentRepo } = useRepo();
   const [messages, setMessages] = useState([
     {
       id: "1",
       role: "assistant",
       content:
-        "Hello! I'm your Repository Assistant. I can help you understand, analyze, and improve any GitHub repository. Ask me anything about the code, architecture, potential bugs, or improvements.",
+        "Hello! I'm your AI Repository Assistant. Ask me anything about the code, architecture, potential bugs, or improvements.",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,18 +29,36 @@ export function AIChatPanel({ onToggleRepositoryPanel }) {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const handleInput = (e) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !currentRepo) return;
 
     const userMessage = {
       id: Math.random().toString(),
       role: "user",
-      content: input,
+      content: input.trim(),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     setIsTyping(true);
 
     try {
@@ -48,6 +67,7 @@ export function AIChatPanel({ onToggleRepositoryPanel }) {
         id: Math.random().toString(),
         role: "assistant",
         content: response.answer,
+        sources: response.sources || [], 
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -73,7 +93,7 @@ export function AIChatPanel({ onToggleRepositoryPanel }) {
         id: "1",
         role: "assistant",
         content:
-          "Hello! I'm your Repository Assistant. I can help you understand, analyze, and improve any GitHub repository. Ask me anything about the code, architecture, potential bugs, or improvements.",
+          "Hello! I'm your AI Repository Assistant. Ask me anything about the code, architecture, potential bugs, or improvements.",
         timestamp: new Date(),
       },
     ]);
@@ -81,88 +101,97 @@ export function AIChatPanel({ onToggleRepositoryPanel }) {
 
   if (!currentRepo) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-background border-l border-border h-screen text-muted-foreground p-8 text-center">
-        <div className="w-16 h-16 bg-sidebar-accent rounded-full flex items-center justify-center mb-6">
-          <FolderOpen className="w-8 h-8 text-primary" />
+      <div className="flex-1 flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center relative">
+        {onClose && (
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-card rounded-md transition-colors text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+        <div className="w-16 h-16 bg-card border border-border/50 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+          <Bot className="w-8 h-8 text-primary/80" />
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">No Repository Selected</h2>
-        <p className="text-sm max-w-sm">
-          Please select a repository from the sidebar or add a new one to start exploring its architecture and asking questions.
+        <h2 className="text-lg font-semibold text-foreground mb-2">No Repository</h2>
+        <p className="text-sm max-w-[250px]">
+          Select a repository to chat with its AI assistant.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background border-l border-border h-screen overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/50 backdrop-blur-md">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            Repository Assistant
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Bot className="w-4 h-4 text-primary" />
+            AI Assistant
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Asking about: {currentRepo.repo_name}
-          </p>
         </div>
-        <button
-          onClick={handleClearChat}
-          className="p-2 hover:bg-card rounded-lg transition-colors text-muted-foreground hover:text-foreground"
-          title="Clear chat"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleClearChat}
+            className="p-1.5 hover:bg-card rounded-md transition-colors text-muted-foreground hover:text-foreground"
+            title="Clear chat"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-card rounded-md transition-colors text-muted-foreground hover:text-foreground ml-1"
+              title="Close chat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-6">
         {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex",
-              message.role === "user" ? "justify-end" : "justify-start",
-            )}
-          >
-            <div
-              className={cn(
-                "max-w-2xl rounded-lg p-4",
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-foreground border border-border",
-              )}
-            >
+          <div key={message.id} className="flex gap-4 group">
+            {/* Avatar */}
+            <div className={cn("w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1 border shadow-sm",
+              message.role === "user" ? "bg-background border-border text-foreground" : "bg-primary/10 border-primary/20 text-primary"
+            )}>
+              {message.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 space-y-2 overflow-hidden min-w-0">
               {message.role === "assistant" ? (
-                <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                <div className="prose prose-sm prose-slate max-w-none text-foreground/90 leading-relaxed break-words">
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
               ) : (
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{message.content}</p>
               )}
-              <p
-                className={cn(
-                  "text-xs mt-2",
-                  message.role === "user"
-                    ? "text-primary-foreground/70"
-                    : "text-muted-foreground",
-                )}
-              >
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+              
+              {/* Source Chips Example */}
+              {message.role === "assistant" && message.sources && message.sources.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-border/20">
+                  {message.sources.map((source, idx) => (
+                    <span key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-card border border-border/50 text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-sm">
+                      <FileCode className="w-3 h-3" /> {source.filename || source.file || "Source"}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
         {isTyping && (
-          <div className="flex justify-start">
-            <div className="max-w-2xl rounded-lg p-4 bg-card text-foreground border border-border flex items-center gap-3">
-              <Bot className="w-5 h-5 text-primary animate-pulse" />
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+          <div className="flex gap-4 group">
+            <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1 border shadow-sm bg-primary/10 border-primary/20 text-primary">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="flex-1 flex items-center h-8">
+              <div className="flex space-x-1 items-center">
+                <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-1.5 h-1.5 bg-primary/60 rounded-full animate-bounce"></div>
               </div>
             </div>
           </div>
@@ -170,34 +199,35 @@ export function AIChatPanel({ onToggleRepositoryPanel }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-6 border-t border-border bg-background">
-        <div className="flex gap-3 items-end">
-          <div className="flex-1 flex flex-col gap-2">
-            <div className="flex gap-2 items-center bg-card border border-border rounded-lg p-4 focus-within:border-primary transition-colors">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Ask anything about this repository..."
-                className="flex-1 bg-transparent text-foreground text-sm outline-none placeholder-muted-foreground"
-                disabled={isTyping}
-              />
-
-              <button className="p-2 hover:bg-sidebar-accent rounded transition-colors text-muted-foreground hover:text-foreground">
-                <Paperclip className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Premium Input */}
+      <div className="p-4 bg-background/80 backdrop-blur-md border-t border-border/40 shrink-0">
+        <div className="relative flex flex-col bg-card/50 border border-border/60 rounded-xl focus-within:border-primary/50 focus-within:bg-card transition-all shadow-sm">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleInput}
+            onKeyDown={handleKeyDown}
+            disabled={isTyping}
+            className="w-full bg-transparent p-3.5 pr-12 text-sm outline-none resize-none placeholder:text-muted-foreground/60 min-h-[52px] max-h-[250px] scrollbar-thin"
+            placeholder="Ask about architecture, bugs, or improvements..."
+            rows={1}
+          />
+          <div className="absolute right-2 bottom-2 flex gap-1">
+            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+              <Paperclip className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isTyping}
+              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-            className="p-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send className="w-4 h-4" />
-          </button>
         </div>
+        <p className="text-[10px] text-center text-muted-foreground mt-2 hidden sm:block">
+          AI can make mistakes. Verify code and architecture claims.
+        </p>
       </div>
     </div>
   );
