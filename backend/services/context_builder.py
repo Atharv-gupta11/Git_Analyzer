@@ -16,7 +16,6 @@ IMPORTANT_METADATA_FILES = {
     ".env.example",
 
     "package.json",
-    "package-lock.json",
 
     "requirements.txt",
     "pyproject.toml",
@@ -398,6 +397,9 @@ def _get_semantic_context(
 
             if chunk_key not in seen_chunks:
 
+                if len(chunks) >= 20:
+                    break
+
                 seen_chunks.add(chunk_key)
 
                 chunks.append(
@@ -424,6 +426,9 @@ Chunk Type: {meta['chunk_type']}
                     "filename": meta["filename"],
                     "chunk_type": meta["chunk_type"]
                 })
+
+        if len(chunks) >= 20:
+            break
 
     return {
         "context": "\n".join(chunks),

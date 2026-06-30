@@ -12,7 +12,8 @@ IGNORED_DIRS = {
     "target",
     "coverage",
     ".idea",
-    ".vscode"
+    ".vscode",
+    ".parcel-cache"
 }
 
 IGNORED_FILENAMES = {
@@ -83,6 +84,9 @@ def should_include_file(file_path):
         return False
 
     if ext in IGNORED_EXTENSIONS:
+        return False
+
+    if file_path.endswith(".map") or file_path.endswith(".min.js") or file_path.endswith(".min.css"):
         return False
 
     try:

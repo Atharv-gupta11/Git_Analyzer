@@ -1,6 +1,5 @@
-// Automatically use local Python server if running on localhost, otherwise use Hugging Face
-const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const BASE_URL = isLocalhost 
+// Use local Python server during development, otherwise use Hugging Face
+const BASE_URL = import.meta.env.DEV 
   ? "http://127.0.0.1:8000" 
   : "https://atharv1107-git-analyzer-backend.hf.space";
 
