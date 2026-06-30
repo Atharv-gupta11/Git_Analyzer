@@ -35,29 +35,34 @@ const loadingSteps = [
   "Building Vector Database"
 ];
 
-function MultiStepLoader({ isAnalyzing, isAnalyzed }) {
+function MultiStepLoader({ isCloning, isIndexing, isAnalyzed }) {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   useEffect(() => {
-    if (isAnalyzing) {
+    if (isCloning) {
       setActiveStepIndex(0);
       const interval = setInterval(() => {
-        setActiveStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-      }, 2000); // Fake progress for UI demo
+        setActiveStepIndex((prev) => (prev < 1 ? prev + 1 : prev));
+      }, 1500); // Fake progress for UI demo
       return () => clearInterval(interval);
-    }
-    if (isAnalyzed) {
+    } else if (isIndexing) {
+      setActiveStepIndex(2);
+      const interval = setInterval(() => {
+        setActiveStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
+      }, 2000);
+      return () => clearInterval(interval);
+    } else if (isAnalyzed) {
       setActiveStepIndex(loadingSteps.length);
     } else {
       setActiveStepIndex(0);
     }
-  }, [isAnalyzing, isAnalyzed]);
+  }, [isCloning, isIndexing, isAnalyzed]);
 
-  if (!isAnalyzing && !isAnalyzed) return null;
-  if (!isAnalyzing && isAnalyzed) return null; // Only show while analyzing
+  if (!isCloning && !isIndexing && !isAnalyzed) return null;
+  if (!isCloning && !isIndexing && isAnalyzed) return null; // Only show while analyzing
 
   return (
-    <div className="p-6 rounded-xl border border-border/40 bg-card/30 backdrop-blur-md max-w-md w-full mb-6">
+    <div className="p-6 rounded-xl border border-border/40 bg-card/30 backdrop-blur-md w-full mb-6">
       <div className="space-y-4">
         {loadingSteps.map((step, index) => {
           const isCompleted = index < activeStepIndex;
@@ -162,17 +167,35 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
     const targetUrl = url || repoUrl;
     if (!targetUrl) return;
     setIsAddingRepo(true);
+    
+    let clonedRepoData = null;
     try {
       const response = await api.cloneRepo(targetUrl);
       if (response.success) {
-        addRepo(response.data);
-        setRepoUrl("");
+        clonedRepoData = response.data;
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to add repository");
-    } finally {
+      alert("Failed to clone repository");
       setIsAddingRepo(false);
+      return;
+    }
+    
+    setIsAddingRepo(false);
+    
+    if (clonedRepoData) {
+      setIsAnalyzing(true);
+      try {
+        await api.indexRepo(clonedRepoData.repo_name);
+        setIsAnalyzed(true);
+        addRepo(clonedRepoData);
+        setRepoUrl("");
+      } catch (e) {
+        console.error(e);
+        alert("Failed to analyze repository");
+      } finally {
+        setIsAnalyzing(false);
+      }
     }
   };
 
@@ -203,24 +226,28 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
           <input 
             value={repoUrl}
             onChange={(e) => setRepoUrl(e.target.value)}
-            disabled={isAddingRepo}
+            disabled={isAddingRepo || isAnalyzing}
             className="w-full pl-10 pr-24 py-3 bg-card border border-border/60 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors shadow-sm"
             placeholder="https://github.com/facebook/react"
             onKeyDown={(e) => e.key === 'Enter' && handleAddRepo()}
           />
           <Button 
             className="absolute right-1.5 h-8 px-4 text-xs"
-            disabled={!repoUrl || isAddingRepo}
+            disabled={!repoUrl || isAddingRepo || isAnalyzing}
             onClick={() => handleAddRepo()}
           >
-            {isAddingRepo ? "Adding..." : "Analyze"}
+            {isAddingRepo || isAnalyzing ? "Analyzing..." : "Analyze"}
           </Button>
+        </div>
+        
+        <div className="w-full max-w-md mt-6">
+           <MultiStepLoader isCloning={isAddingRepo} isIndexing={isAnalyzing} isAnalyzed={false} />
         </div>
         
         <div className="mt-8 flex gap-3 text-xs text-muted-foreground">
           <span>Try:</span>
-          <button onClick={() => handleAddRepo("https://github.com/vercel/next.js")} className="hover:text-foreground underline decoration-border underline-offset-4">vercel/next.js</button>
-          <button onClick={() => handleAddRepo("https://github.com/shadcn-ui/ui")} className="hover:text-foreground underline decoration-border underline-offset-4">shadcn-ui/ui</button>
+          <button onClick={() => handleAddRepo("https://github.com/vercel/next.js")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>vercel/next.js</button>
+          <button onClick={() => handleAddRepo("https://github.com/shadcn-ui/ui")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>shadcn-ui/ui</button>
         </div>
       </div>
     );
@@ -295,7 +322,7 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
       <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
         {activeTab === "overview" && (
           <div className="max-w-5xl mx-auto">
-            {isAnalyzing && <MultiStepLoader isAnalyzing={isAnalyzing} isAnalyzed={isAnalyzed} />}
+            {isAnalyzing && <MultiStepLoader isCloning={false} isIndexing={isAnalyzing} isAnalyzed={isAnalyzed} />}
             
             {/* Premium Stats Card */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
