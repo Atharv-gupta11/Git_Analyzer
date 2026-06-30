@@ -1,4 +1,4 @@
-const BASE_URL = "/api";
+const BASE_URL = "https://atharv1107-git-analyzer-backend.hf.space";
 
 export const api = {
   cloneRepo: async (repoUrl) => {
