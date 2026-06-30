@@ -11,4 +11,4 @@ node_bundler = "esbuild"
 force = true
 from = "/api/*"
 status = 200
-to = "/.netlify/functions/api/:splat"
+to = "https://atharv1107-git-analyzer-backend.hf.space/:splat"
