@@ -11,45 +11,44 @@
    * Colors converted to HSL format for tailwind compatibility
    */
   :root {
-    /* Pinkish pale yellow theme (soft, low-contrast, less bright) */
-    --background: 45 40% 96%; /* Pale warm yellow/cream */
-    --foreground: 20 30% 25%; /* Soft dark brownish-gray */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    --card: 45 30% 98%; /* Slightly lighter than bg */
-    --card-foreground: 20 30% 25%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 45 30% 98%;
-    --popover-foreground: 20 30% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 345 50% 75%; /* Soft pale pink */
-    --primary-foreground: 345 50% 20%; /* Dark contrast on pink */
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 40 20% 90%;
-    --secondary-foreground: 20 30% 25%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 40 15% 90%;
-    --muted-foreground: 20 10% 50%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 345 30% 92%; /* Very subtle pink for hover */
-    --accent-foreground: 345 50% 30%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
-    --destructive: 0 70% 60%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 40 15% 85%;
-    --input: 40 15% 85%;
-    --ring: 345 50% 75%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 45 35% 94%;
-    --sidebar-foreground: 20 30% 25%;
-    --sidebar-primary: 345 50% 75%;
-    --sidebar-primary-foreground: 345 50% 20%;
-    --sidebar-accent: 40 15% 88%;
-    --sidebar-accent-foreground: 20 30% 25%;
-    --sidebar-border: 40 15% 82%;
-    --sidebar-ring: 345 50% 75%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Status colors */
     --success: 142.3 50% 45%;

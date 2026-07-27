@@ -1,9 +1,129 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Paperclip, Trash2, Bot, FolderOpen, User, FileCode, X } from "lucide-react";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Send, Paperclip, Trash2, Bot, FolderOpen, User, FileCode, X, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRepo } from "../context/RepoContext";
 import { api } from "../api/api";
+import TextareaAutosize from 'react-textarea-autosize';
+
+const CopyButton = ({ text, className }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={handleCopy} className={cn("p-1.5 bg-card/80 hover:bg-card border border-border rounded-md text-muted-foreground transition-all", className)}>
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+};
+
+const ChatMessage = React.memo(({ message }) => {
+  return (
+    <div className="flex gap-4 group">
+      {/* Avatar */}
+      <div className={cn("w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1 border shadow-sm",
+        message.role === "user" ? "bg-background border-border text-foreground" : "bg-primary/10 border-primary/20 text-primary"
+      )}>
+        {message.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 space-y-2 overflow-hidden min-w-0">
+        {message.role === "assistant" ? (
+          <div className="prose prose-sm md:prose-base max-w-none text-foreground leading-relaxed break-words">
+            <ReactMarkdown
+              components={{
+                code({ node, inline, className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '')
+                  return !inline && match ? (
+                    <div className="relative group rounded-md overflow-hidden my-4 border border-border text-sm">
+                      <CopyButton text={String(children)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    </div>
+                  ) : (
+                    <code className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono border border-border" {...props}>
+                      {children}
+                    </code>
+                  )
+                }
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{message.content}</p>
+        )}
+
+        {/* Source Chips Example */}
+        {message.role === "assistant" && message.sources && message.sources.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-border/20">
+            {message.sources.map((source, idx) => (
+              <span key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-card border border-border/50 text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-sm">
+                <FileCode className="w-3 h-3" /> {source.filename || source.file || "Source"}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const ChatInput = ({ onSend, isTyping }) => {
+  const [input, setInput] = useState("");
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendClick();
+    }
+  };
+
+  const handleSendClick = () => {
+    if (!input.trim() || isTyping) return;
+    onSend(input);
+    setInput("");
+  };
+
+  return (
+    <div className="p-4 bg-background border-t border-border shrink-0">
+      <div className="relative flex flex-col bg-card border border-border rounded-xl focus-within:border-primary/50 focus-within:bg-card transition-all shadow-sm">
+        <TextareaAutosize
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isTyping}
+          className="w-full bg-transparent p-3.5 pr-12 text-sm outline-none resize-none placeholder:text-muted-foreground/60 min-h-[52px]"
+          placeholder="Ask about architecture, bugs, or improvements..."
+          maxRows={8}
+        />
+        <div className="absolute right-2 bottom-2 flex gap-1">
+          <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+            <Paperclip className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSendClick}
+            disabled={!input.trim() || isTyping}
+            className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+      <p className="text-[10px] text-center text-muted-foreground mt-2 hidden sm:block">
+        AI can make mistakes. Verify code and architecture claims.
+      </p>
+    </div>
+  );
+};
 
 export function AIChatPanel({ onClose }) {
   const { currentRepo } = useRepo();
@@ -16,10 +136,8 @@ export function AIChatPanel({ onClose }) {
       timestamp: new Date(),
     },
   ]);
-  const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,36 +147,17 @@ export function AIChatPanel({ onClose }) {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleInput = (e) => {
-    setInput(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || !currentRepo) return;
+  const handleSend = useCallback(async (text) => {
+    if (!text.trim() || !currentRepo) return;
 
     const userMessage = {
       id: Math.random().toString(),
       role: "user",
-      content: input.trim(),
+      content: text.trim(),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
     setIsTyping(true);
 
     try {
@@ -67,7 +166,7 @@ export function AIChatPanel({ onClose }) {
         id: Math.random().toString(),
         role: "assistant",
         content: response.answer,
-        sources: response.sources || [], 
+        sources: response.sources || [],
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -85,7 +184,7 @@ export function AIChatPanel({ onClose }) {
     } finally {
       setIsTyping(false);
     }
-  };
+  }, [currentRepo]);
 
   const handleClearChat = () => {
     setMessages([
@@ -107,7 +206,7 @@ export function AIChatPanel({ onClose }) {
             <X className="w-4 h-4" />
           </button>
         )}
-        <div className="w-16 h-16 bg-card border border-border/50 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+        <div className="w-16 h-16 bg-card border border-border rounded-2xl flex items-center justify-center mb-6 shadow-sm">
           <Bot className="w-8 h-8 text-primary/80" />
         </div>
         <h2 className="text-lg font-semibold text-foreground mb-2">No Repository</h2>
@@ -121,7 +220,7 @@ export function AIChatPanel({ onClose }) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-background/50 backdrop-blur-md">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background">
         <div>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Bot className="w-4 h-4 text-primary" />
@@ -151,36 +250,7 @@ export function AIChatPanel({ onClose }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-6">
         {messages.map((message) => (
-          <div key={message.id} className="flex gap-4 group">
-            {/* Avatar */}
-            <div className={cn("w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 mt-1 border shadow-sm",
-              message.role === "user" ? "bg-background border-border text-foreground" : "bg-primary/10 border-primary/20 text-primary"
-            )}>
-              {message.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-            
-            {/* Content */}
-            <div className="flex-1 space-y-2 overflow-hidden min-w-0">
-              {message.role === "assistant" ? (
-                <div className="prose prose-sm prose-slate max-w-none text-foreground/90 leading-relaxed break-words">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
-                </div>
-              ) : (
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{message.content}</p>
-              )}
-              
-              {/* Source Chips Example */}
-              {message.role === "assistant" && message.sources && message.sources.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2 mt-2 border-t border-border/20">
-                  {message.sources.map((source, idx) => (
-                    <span key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-card border border-border/50 text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-sm">
-                      <FileCode className="w-3 h-3" /> {source.filename || source.file || "Source"}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <ChatMessage key={message.id} message={message} />
         ))}
         {isTyping && (
           <div className="flex gap-4 group">
@@ -200,35 +270,7 @@ export function AIChatPanel({ onClose }) {
       </div>
 
       {/* Premium Input */}
-      <div className="p-4 bg-background/80 backdrop-blur-md border-t border-border/40 shrink-0">
-        <div className="relative flex flex-col bg-card/50 border border-border/60 rounded-xl focus-within:border-primary/50 focus-within:bg-card transition-all shadow-sm">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            disabled={isTyping}
-            className="w-full bg-transparent p-3.5 pr-12 text-sm outline-none resize-none placeholder:text-muted-foreground/60 min-h-[52px] max-h-[250px] scrollbar-thin"
-            placeholder="Ask about architecture, bugs, or improvements..."
-            rows={1}
-          />
-          <div className="absolute right-2 bottom-2 flex gap-1">
-            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
-              <Paperclip className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
-              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        <p className="text-[10px] text-center text-muted-foreground mt-2 hidden sm:block">
-          AI can make mistakes. Verify code and architecture claims.
-        </p>
-      </div>
+      <ChatInput onSend={handleSend} isTyping={isTyping} />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Github,
   Zap,
@@ -20,74 +22,29 @@ import {
   Search,
   Check,
   PanelRightOpen,
-  PanelRightClose
+  PanelRightClose,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRepo } from "../context/RepoContext";
 import { api } from "../api/api";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
-const loadingSteps = [
-  "Cloning Repository",
-  "Reading Files",
-  "Parsing Source Code",
-  "Generating Embeddings",
-  "Building Vector Database"
-];
-
-function MultiStepLoader({ isCloning, isIndexing, isAnalyzed }) {
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
-
-  useEffect(() => {
-    if (isCloning) {
-      setActiveStepIndex(0);
-      const interval = setInterval(() => {
-        setActiveStepIndex((prev) => (prev < 1 ? prev + 1 : prev));
-      }, 1500); // Fake progress for UI demo
-      return () => clearInterval(interval);
-    } else if (isIndexing) {
-      setActiveStepIndex(2);
-      const interval = setInterval(() => {
-        setActiveStepIndex((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-      }, 2000);
-      return () => clearInterval(interval);
-    } else if (isAnalyzed) {
-      setActiveStepIndex(loadingSteps.length);
-    } else {
-      setActiveStepIndex(0);
-    }
-  }, [isCloning, isIndexing, isAnalyzed]);
-
-  if (!isCloning && !isIndexing && !isAnalyzed) return null;
-  if (!isCloning && !isIndexing && isAnalyzed) return null; // Only show while analyzing
-
+const CopyButton = ({ text, className }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
-    <div className="p-6 rounded-xl border border-border/40 bg-card/30 backdrop-blur-md w-full mb-6">
-      <div className="space-y-4">
-        {loadingSteps.map((step, index) => {
-          const isCompleted = index < activeStepIndex;
-          const isActive = index === activeStepIndex;
-          
-          return (
-            <div key={step} className={cn("flex items-center gap-3 transition-opacity duration-300", 
-              isCompleted || isActive ? "opacity-100" : "opacity-40"
-            )}>
-              <div className={cn("w-5 h-5 rounded-full flex items-center justify-center border text-[10px]",
-                isCompleted ? "bg-primary border-primary text-primary-foreground" :
-                isActive ? "border-primary text-primary animate-pulse" : "border-muted-foreground text-transparent"
-              )}>
-                {isCompleted && <Check className="w-3 h-3" />}
-              </div>
-              <span className={cn("text-sm font-medium", isActive && "text-foreground animate-pulse")}>
-                {step}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <button onClick={handleCopy} className={cn("p-1.5 bg-card/80 hover:bg-card border border-border rounded-md text-muted-foreground transition-all", className)}>
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
   );
-}
+};
 
 export function RepositoryPanel({ onToggleChat, isChatOpen }) {
   const { currentRepo, addRepo } = useRepo();
@@ -166,6 +123,13 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
   const handleAddRepo = async (url) => {
     const targetUrl = url || repoUrl;
     if (!targetUrl) return;
+
+    const isValidGithubUrl = /^https?:\/\/(www\.)?github\.com\/[\w-]+\/[\w.-]+$/.test(targetUrl);
+    if (!isValidGithubUrl) {
+      toast.error("Invalid URL", { description: "Please enter a valid GitHub repository URL." });
+      return;
+    }
+
     setIsAddingRepo(true);
     
     let clonedRepoData = null;
@@ -176,7 +140,7 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to clone repository");
+      toast.error("Clone Failed", { description: "Failed to clone repository. Check the URL." });
       setIsAddingRepo(false);
       return;
     }
@@ -190,9 +154,10 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
         setIsAnalyzed(true);
         addRepo(clonedRepoData);
         setRepoUrl("");
+        toast.success("Repository Ready", { description: "Analysis complete." });
       } catch (e) {
         console.error(e);
-        alert("Failed to analyze repository");
+        toast.error("Analysis Failed", { description: "Failed to analyze repository." });
       } finally {
         setIsAnalyzing(false);
       }
@@ -201,7 +166,7 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
 
   if (!currentRepo) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-background/50 h-full p-8 text-center relative">
+      <div className="flex-1 flex flex-col items-center justify-center bg-background h-full p-8 text-center relative">
         <div className="absolute top-4 right-4">
            {!isChatOpen && (
               <button 
@@ -213,41 +178,42 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
               </button>
             )}
         </div>
-        <div className="w-16 h-16 bg-card border border-border/50 shadow-sm rounded-2xl flex items-center justify-center mb-6">
-          <Github className="w-8 h-8 text-foreground/80" />
-        </div>
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground mb-3">Analyze any Repository</h2>
-        <p className="text-muted-foreground max-w-md mb-8">
-          Paste a public GitHub repository URL to generate architecture diagrams, locate bugs, and search the codebase using AI.
-        </p>
         
-        <div className="w-full max-w-md relative flex items-center">
-          <div className="absolute left-3 text-muted-foreground"><Search className="w-4 h-4" /></div>
-          <input 
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            disabled={isAddingRepo || isAnalyzing}
-            className="w-full pl-10 pr-24 py-3 bg-card border border-border/60 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors shadow-sm"
-            placeholder="https://github.com/facebook/react"
-            onKeyDown={(e) => e.key === 'Enter' && handleAddRepo()}
-          />
-          <Button 
-            className="absolute right-1.5 h-8 px-4 text-xs"
-            disabled={!repoUrl || isAddingRepo || isAnalyzing}
-            onClick={() => handleAddRepo()}
-          >
-            {isAddingRepo || isAnalyzing ? "Analyzing..." : "Analyze"}
-          </Button>
-        </div>
-        
-        <div className="w-full max-w-md mt-6">
-           <MultiStepLoader isCloning={isAddingRepo} isIndexing={isAnalyzing} isAnalyzed={false} />
-        </div>
-        
-        <div className="mt-8 flex gap-3 text-xs text-muted-foreground">
-          <span>Try:</span>
-          <button onClick={() => handleAddRepo("https://github.com/vercel/next.js")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>vercel/next.js</button>
-          <button onClick={() => handleAddRepo("https://github.com/shadcn-ui/ui")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>shadcn-ui/ui</button>
+        <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto space-y-6 text-center w-full">
+          <div className="w-16 h-16 bg-muted/50 border border-border shadow-sm rounded-2xl flex items-center justify-center">
+            <Github className="w-8 h-8 text-foreground/80" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground">Analyze any Repository</h2>
+            <p className="text-muted-foreground max-w-md mx-auto text-base">
+              Paste a public GitHub repository URL to generate architecture diagrams, locate bugs, and search the codebase using AI.
+            </p>
+          </div>
+          
+          <div className="w-full max-w-lg relative flex items-center mt-4">
+            <div className="absolute left-3 text-muted-foreground"><Search className="w-4 h-4" /></div>
+            <input 
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              disabled={isAddingRepo || isAnalyzing}
+              className="w-full pl-10 pr-28 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors shadow-sm"
+              placeholder="https://github.com/facebook/react"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRepo()}
+            />
+            <Button 
+              className="absolute right-1.5 h-8 px-4 text-xs"
+              disabled={!repoUrl || isAddingRepo || isAnalyzing}
+              onClick={() => handleAddRepo()}
+            >
+              {isAddingRepo || isAnalyzing ? <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Analyzing</> : "Analyze"}
+            </Button>
+          </div>
+          
+          <div className="mt-4 flex gap-3 text-xs text-muted-foreground">
+            <span>Try:</span>
+            <button onClick={() => handleAddRepo("https://github.com/vercel/next.js")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>vercel/next.js</button>
+            <button onClick={() => handleAddRepo("https://github.com/shadcn-ui/ui")} className="hover:text-foreground underline decoration-border underline-offset-4" disabled={isAddingRepo || isAnalyzing}>shadcn-ui/ui</button>
+          </div>
         </div>
       </div>
     );
@@ -256,15 +222,20 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
   return (
     <div className="flex-1 flex flex-col bg-background overflow-hidden h-full">
       {/* Toolbar */}
-      <div className="px-6 py-4 bg-background/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="px-6 py-4 bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Github className="w-6 h-6 text-primary" />
+          <Github className="w-6 h-6 text-foreground" />
           <div>
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               {currentRepo.repo_name}
-              <span className="px-2 py-0.5 bg-card rounded-md text-[10px] font-medium text-muted-foreground border border-border/50 uppercase tracking-wider">
+              <span className="px-2 py-0.5 bg-muted rounded-md text-[10px] font-medium text-muted-foreground border border-border uppercase tracking-wider">
                 main
               </span>
+              {isAnalyzing && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-primary/10 rounded-md text-[10px] font-medium text-primary ml-2 animate-pulse">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Indexing...
+                </span>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-md">
               {currentRepo.local_path}
@@ -279,7 +250,7 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
             disabled={isAnalyzing}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 font-medium text-sm shadow-sm"
           >
-            <Zap className="w-4 h-4" />
+            {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
             {isAnalyzing ? "Analyzing..." : "Analyze Repository"}
           </button>
           <button className="flex items-center justify-center p-2 bg-card border border-border/60 text-foreground rounded-lg hover:bg-muted transition-colors" title="Refresh">
@@ -298,7 +269,7 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
       </div>
 
       {/* Sleek Tabs Navigation */}
-      <div className="px-6 py-2 border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-10 overflow-x-auto scrollbar-none">
+      <div className="px-6 py-2 border-b border-border bg-background sticky top-0 z-10 overflow-x-auto scrollbar-none">
         <div className="flex space-x-1 min-w-max">
           {tabs.map((tab) => (
             <button
@@ -322,30 +293,28 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
       <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
         {activeTab === "overview" && (
           <div className="max-w-5xl mx-auto">
-            {isAnalyzing && <MultiStepLoader isCloning={false} isIndexing={isAnalyzing} isAnalyzed={isAnalyzed} />}
-            
             {/* Premium Stats Card */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Files Indexed", value: stats?.total_files || "-", icon: FileCode, color: "text-blue-500" },
-                { label: "Characters", value: stats?.total_characters ? (stats.total_characters/1000).toFixed(1) + 'k' : "-", icon: BarChart3, color: "text-purple-500" },
-                { label: "Semantic Chunks", value: stats?.chunks || "-", icon: Database, color: "text-emerald-500" },
+                { label: "Files Indexed", value: stats?.total_files || "-", icon: FileCode, color: "text-foreground" },
+                { label: "Characters", value: stats?.total_characters ? (stats.total_characters/1000).toFixed(1) + 'k' : "-", icon: BarChart3, color: "text-foreground" },
+                { label: "Semantic Chunks", value: stats?.chunks || "-", icon: Database, color: "text-foreground" },
                 { label: "Analysis Status", value: isAnalyzed ? "Complete" : "Pending", icon: isAnalyzed ? Check : Clock, color: isAnalyzed ? "text-success" : "text-warning" }
               ].map((stat, i) => (
-                <div key={i} className="p-5 rounded-xl border border-border/40 bg-card/20 hover:bg-card/40 transition-colors flex flex-col gap-3 shadow-sm">
+                <div key={i} className="p-5 rounded-xl border border-border bg-card flex flex-col gap-3 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <stat.icon className={cn("w-4 h-4", stat.color)} />
                     <span className="text-xs font-medium uppercase tracking-wider">{stat.label}</span>
                   </div>
-                  <span className="text-2xl font-semibold text-foreground/90">{stat.value}</span>
+                  <span className="text-2xl font-semibold text-foreground">{stat.value}</span>
                 </div>
               ))}
             </div>
 
             {/* Placeholder for where actual markdown overview would go */}
-            <div className="rounded-xl border border-border/40 bg-card/20 p-8 text-center text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
               <Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <h3 className="text-lg font-medium text-foreground/80 mb-2">Repository Overview</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">Repository Overview</h3>
               <p className="max-w-md mx-auto text-sm">
                 Run the analysis to generate a comprehensive overview of this repository, including its architecture, core technologies, and structure.
               </p>
@@ -356,26 +325,46 @@ export function RepositoryPanel({ onToggleChat, isChatOpen }) {
         {activeTab !== "overview" && (
           <div className="max-w-5xl mx-auto">
             {!isAnalyzed ? (
-              <div className="rounded-xl border border-border/40 bg-card/20 p-8 text-center text-muted-foreground flex flex-col items-center">
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground flex flex-col items-center">
                 <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium text-foreground/80 mb-2">Analysis Required</h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">Analysis Required</h3>
                 <p className="max-w-md mx-auto text-sm">
                   Please run the repository analysis first (click "Analyze Repository") to view the {tabs.find(t => t.id === activeTab)?.label}.
                 </p>
               </div>
             ) : isTabLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                <div className="flex space-x-1 items-center mb-4">
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce"></div>
-                </div>
-                <p className="text-sm">Generating AI analysis for {tabs.find(t => t.id === activeTab)?.label}...</p>
+              <div className="space-y-4 w-full">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-32 w-full mt-6" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-32 w-full mt-6" />
               </div>
             ) : (
-              <div className="rounded-xl border border-border/40 bg-card/20 p-8 shadow-sm">
-                <div className="prose prose-slate max-w-none text-foreground/90 leading-relaxed break-words">
-                  <ReactMarkdown>{tabContent[activeTab] || ""}</ReactMarkdown>
+              <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+                <div className="prose prose-sm md:prose-base max-w-none text-foreground leading-relaxed break-words">
+                  <ReactMarkdown
+                    components={{
+                      code({node, inline, className, children, ...props}) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return !inline && match ? (
+                          <div className="relative group rounded-md overflow-hidden my-4 border border-border text-sm">
+                            <CopyButton text={String(children)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div" {...props}>
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          </div>
+                        ) : (
+                          <code className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono border border-border" {...props}>
+                            {children}
+                          </code>
+                        )
+                      }
+                    }}
+                  >
+                    {tabContent[activeTab] || ""}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}
